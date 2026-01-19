@@ -45,7 +45,7 @@ function Masonry<T>({
   useEffect(() => {
     const option = {
       root: null,
-      rootMargin: "100px",
+      rootMargin: "500px", // 大幅增加预加载范围，提前500px开始加载下一页
       threshold: 0,
     };
     const observer = new IntersectionObserver(handleObserver, option);
@@ -68,7 +68,7 @@ function Masonry<T>({
             }}
           >
             {column.map((item, idx) => (
-              <div key={idx}>{renderItem(item, idx)}</div>
+              <div key={`col-${colIdx}-item-${idx}`}>{renderItem(item, idx)}</div>
             ))}
           </div>
         ))}

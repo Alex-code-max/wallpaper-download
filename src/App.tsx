@@ -4,43 +4,67 @@ import logoVite from "./assets/logo-vite.svg";
 import logoElectron from "./assets/logo-electron.svg";
 import "./App.css";
 import Masonry from "./components/masonry";
+import LazyImage from "./components/LazyImage";
+import { imagePreloader } from "./utils/imagePreloader";
 
 function App() {
   const [count, setCount] = useState(0);
   const [picList, setPicList] = useState<any[]>([]);
   const [hasNextPage, setHasNextPage] = useState(true);
   const [page, setPage] = useState(1);
-  const getFreshPic = async () => {
-    if (!hasNextPage) return;
-    console.log("page :>> ", page);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const getFreshPic = useCallback(async (currentPage: number) => {
+    if (isLoading) return;
+    setIsLoading(true);
     setHasNextPage(false);
     try {
-      const data = (await window.api.fetchWallpapers(page)) || [];
+      const data = (await window.api.fetchWallpapers(currentPage)) || [];
       setHasNextPage(data.length === 10);
       const res = data.map((item: any) => ({
         src: item.urls.full,
         alt: item.description,
       }));
-      setPicList([...picList, ...res]);
+      setPicList((prevList) => {
+        const newList = [...prevList, ...res];
+        // 预加载新添加的图片
+        const newSrcs = res.map(item => item.src);
+        imagePreloader.preloadBatch(newSrcs).catch(() => {
+          // 忽略预加载错误
+        });
+        return newList;
+      });
     } catch (err) {
       console.log(err);
       setHasNextPage(true);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [isLoading]);
 
-  const fetchNextPage = () => {
-    setPage(page + 1);
-    getFreshPic();
-  };
+  const fetchNextPage = useCallback(() => {
+    if (!hasNextPage || isLoading) return;
+    const nextPage = page + 1;
+    setPage(nextPage);
+    getFreshPic(nextPage);
+  }, [page, hasNextPage, isLoading, getFreshPic]);
 
-  const handleDownload = async (url: string) => {
+  const handleDownload = useCallback(async (url: string) => {
     try {
       const savedPath = await window.electron.downloadImage(url);
       alert(`图片已保存到：${savedPath}`);
     } catch (err) {
       alert("下载失败: " + err);
     }
-  };
+  }, []);
+
+  // 初始化加载第一页数据
+  useEffect(() => {
+    if (picList.length === 0) {
+      getFreshPic(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="App">
@@ -50,11 +74,10 @@ function App() {
       <Masonry
         items={picList}
         columnCount={3}
-        renderItem={(item) => (
-          <img
+        renderItem={(item, index) => (
+          <LazyImage
             src={item.src}
-            alt={item.alt}
-            style={{ width: "100%" }}
+            alt={item.alt || `Wallpaper ${index}`}
             onClick={() => handleDownload(item.src)}
           />
         )}
