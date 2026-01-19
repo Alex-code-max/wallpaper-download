@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./lazy-image.css";
 import { imagePreloader } from "@/utils/imagePreloader";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface LazyImageProps {
   src: string;
@@ -61,9 +62,7 @@ const LazyImage: React.FC<LazyImageProps> = ({ src, alt, onClick }) => {
       }}
     >
       {!isLoaded && (
-        <div className="lazy-image-placeholder">
-          <div className="lazy-image-skeleton" />
-        </div>
+        <Skeleton className="absolute inset-0 w-full h-full min-h-[200px] rounded-lg" />
       )}
       {isInView && (
         <img

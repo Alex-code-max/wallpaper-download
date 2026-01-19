@@ -6,6 +6,7 @@ import "./App.css";
 import Masonry from "./components/masonry";
 import LazyImage from "./components/LazyImage";
 import { imagePreloader } from "./utils/imagePreloader";
+import { LoadingOverlay } from "./components/ui/loading-overlay";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -13,6 +14,7 @@ function App() {
   const [hasNextPage, setHasNextPage] = useState(true);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const getFreshPic = useCallback(async (currentPage: number) => {
     if (isLoading) return;
@@ -28,7 +30,7 @@ function App() {
       setPicList((prevList) => {
         const newList = [...prevList, ...res];
         // 预加载新添加的图片
-        const newSrcs = res.map(item => item.src);
+        const newSrcs = res.map((item: any) => item.src);
         imagePreloader.preloadBatch(newSrcs).catch(() => {
           // 忽略预加载错误
         });
@@ -50,11 +52,14 @@ function App() {
   }, [page, hasNextPage, isLoading, getFreshPic]);
 
   const handleDownload = useCallback(async (url: string) => {
+    setIsDownloading(true);
     try {
       const savedPath = await window.electron.downloadImage(url);
       alert(`图片已保存到：${savedPath}`);
     } catch (err) {
       alert("下载失败: " + err);
+    } finally {
+      setIsDownloading(false);
     }
   }, []);
 
@@ -68,6 +73,9 @@ function App() {
 
   return (
     <div className="App">
+      {/* Loading Overlay */}
+      <LoadingOverlay isOpen={isDownloading} message="正在下载图片..." />
+      
       {/* {picList.map((item) => (
         <img className="pic" src={item.urls.full} alt="pic" />
       ))} */}
